@@ -334,8 +334,11 @@ func (h *Client) install(ctx context.Context, req *rls.InstallReleaseRequest) (*
 	defer c.Close()
 
 	rlc := rls.NewReleaseServiceClient(c)
-	client, err := rlc.InstallRelease(ctx, req)
 
+	return h.processInstallStreamResponse(rlc.InstallRelease(ctx, req))
+}
+
+func (h *Client) processInstallStreamResponse(client rls.ReleaseService_InstallReleaseClient, err error) (*rls.InstallReleaseResponse, error)  {
 	if err != nil {
 		return nil, err
 	}
@@ -364,6 +367,64 @@ func (h *Client) install(ctx context.Context, req *rls.InstallReleaseRequest) (*
 	}
 }
 
+func (h *Client) processUpdateStreamResponse(client rls.ReleaseService_UpdateReleaseClient, err error) (*rls.UpdateReleaseResponse, error)  {
+	if err != nil {
+		return nil, err
+	}
+
+	var releaseResponse *rls.UpdateReleaseResponse
+
+	for {
+		result, err := client.Recv()
+
+		if err == io.EOF {
+			return releaseResponse, nil
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		switch x := result.Response.(type) {
+		case *rls.UpdateReleaseResponse_Release:
+			releaseResponse = result
+			break
+		case *rls.UpdateReleaseResponse_LogItem:
+			h.opts.logger.Log(x.LogItem.Level, x.LogItem.Message)
+			break
+		}
+	}
+}
+
+func (h *Client) processRollbackStreamResponse(client rls.ReleaseService_RollbackReleaseClient, err error) (*rls.RollbackReleaseResponse, error)  {
+	if err != nil {
+		return nil, err
+	}
+
+	var releaseResponse *rls.RollbackReleaseResponse
+
+	for {
+		result, err := client.Recv()
+
+		if err == io.EOF {
+			return releaseResponse, nil
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		switch x := result.Response.(type) {
+		case *rls.RollbackReleaseResponse_Release:
+			releaseResponse = result
+			break
+		case *rls.RollbackReleaseResponse_LogItem:
+			h.opts.logger.Log(x.LogItem.Level, x.LogItem.Message)
+			break
+		}
+	}
+}
+
 // Executes tiller.UninstallRelease RPC.
 func (h *Client) delete(ctx context.Context, req *rls.UninstallReleaseRequest) (*rls.UninstallReleaseResponse, error) {
 	c, err := h.connect(ctx)
@@ -385,7 +446,8 @@ func (h *Client) update(ctx context.Context, req *rls.UpdateReleaseRequest) (*rl
 	defer c.Close()
 
 	rlc := rls.NewReleaseServiceClient(c)
-	return rlc.UpdateRelease(ctx, req)
+
+	return h.processUpdateStreamResponse(rlc.UpdateRelease(ctx, req))
 }
 
 // Executes tiller.RollbackRelease RPC.
@@ -397,7 +459,7 @@ func (h *Client) rollback(ctx context.Context, req *rls.RollbackReleaseRequest) 
 	defer c.Close()
 
 	rlc := rls.NewReleaseServiceClient(c)
-	return rlc.RollbackRelease(ctx, req)
+	return h.processRollbackStreamResponse(rlc.RollbackRelease(ctx, req))
 }
 
 // Executes tiller.GetReleaseStatus RPC.

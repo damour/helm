@@ -57,7 +57,7 @@ service ReleaseService {
 	}
 
 	// UpdateRelease updates release content.
-	rpc UpdateRelease(UpdateReleaseRequest) returns (UpdateReleaseResponse) {
+	rpc UpdateRelease(UpdateReleaseRequest) returns (stream UpdateReleaseResponse) {
 	}
 
 	// InstallRelease requests installation of a chart as a new release.
@@ -65,7 +65,7 @@ service ReleaseService {
 	}
 
 	// UninstallRelease requests deletion of a named release.
-	rpc UninstallRelease(UninstallReleaseRequest) returns (UninstallReleaseResponse) {
+	rpc UninstallRelease(UninstallReleaseRequest) returns (stream UninstallReleaseResponse) {
 	}
 
     // GetVersion returns the current version of the server.
@@ -73,7 +73,7 @@ service ReleaseService {
     }
 
     // RollbackRelease rolls back a release to a previous version.
-    rpc RollbackRelease(RollbackReleaseRequest) returns (RollbackReleaseResponse) {
+    rpc RollbackRelease(RollbackReleaseRequest) returns (stream RollbackReleaseResponse) {
     }
 
     // ReleaseHistory retrieves a releasse's history.
@@ -213,7 +213,11 @@ message UpdateReleaseRequest {
 
 // UpdateReleaseResponse is the response to an update request.
 message UpdateReleaseResponse {
-	hapi.release.Release release = 1;
+	// One of the following will be filled in.
+	oneof response {
+		hapi.release.Release release = 1;
+		LogItem logItem = 2;
+	}
 }
 
 message RollbackReleaseRequest {
@@ -238,7 +242,11 @@ message RollbackReleaseRequest {
 
 // RollbackReleaseResponse is the response to an update request.
 message RollbackReleaseResponse {
-	hapi.release.Release release = 1;
+	// One of the following will be filled in.
+	oneof response {
+		hapi.release.Release release = 1;
+		LogItem logItem = 2;
+	}
 }
 
 // InstallReleaseRequest is the request for an installation of a chart.
@@ -306,10 +314,14 @@ message UninstallReleaseRequest {
 
 // UninstallReleaseResponse represents a successful response to an uninstall request.
 message UninstallReleaseResponse {
-	// Release is the release that was marked deleted.
-	hapi.release.Release release = 1;
-	// Info is an uninstall message
-	string info = 2;
+	// One of the following will be filled in.
+	oneof response {
+		// Release is the release that was marked deleted.
+		hapi.release.Release release = 1;
+		// Info is an uninstall message
+		string info = 2;
+		LogItem logItem = 3;
+	}
 }
 
 // GetVersionRequest requests for version information.
